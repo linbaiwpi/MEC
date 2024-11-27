@@ -48,22 +48,22 @@ void im2col_mec(float** src,
                 }
             }
         }
-        cout << "IM2COL ===================" << endl;
-        for (int i = 0; i < inH * kW; i++) {
-            for (int j = 0; j < outH; j++) {
-                cout << dest[i*outH+j] << ",";
-            }
-            cout << endl;
-        }
+        // cout << "IM2COL ===================" << endl;
+        // for (int i = 0; i < inH * kW; i++) {
+        //     for (int j = 0; j < outH; j++) {
+        //         cout << dest[i*outH+j] << ",";
+        //     }
+        //     cout << endl;
+        // }
     }
 }
 
 
-const int kernel_num = 1;
-const int kernel_h = 5;
-const int kernel_w = 5;
-const int inHeight = 10;
-const int inWidth = 10;
+const int kernel_num = 64;
+const int kernel_h = 7;
+const int kernel_w = 7;
+const int inHeight = 224;
+const int inWidth = 224;
 
 void printMemoryUsage() {
     std::ifstream procFile("/proc/self/status");
@@ -85,13 +85,13 @@ int main(){
             src[i][j] = (i * inWidth + j) * 0.1;
         }
     }
-    cout << "SOURCE ===================" << endl;
-    for (int i = 0; i < inHeight; i++) {
-        for (int j = 0; j < inWidth; j++) {
-            cout << src[i][j] << ",";
-        }
-        cout << endl;
-    }
+    // cout << "SOURCE ===================" << endl;
+    // for (int i = 0; i < inHeight; i++) {
+    //     for (int j = 0; j < inWidth; j++) {
+    //         cout << src[i][j] << ",";
+    //     }
+    //     cout << endl;
+    // }
 
     // 构造kernel矩阵
     float **kernel[kernel_num];
@@ -137,16 +137,16 @@ int main(){
             outWidth, kernel_w * kernel_h,1,
             kernel2col, kernel_h * kernel_w,
             srcIm2col + i * outWidth, outWidth, 0, output[i], outWidth);
+        printMemoryUsage();
     }
-    printMemoryUsage();
 
-    cout << "OUTPUT ===================" << endl;
-    for (int i = 0; i < outHeight; i++) {
-        for (int j = 0; j < outWidth; j++) {
-            cout << output[i][j] << ",";
-        }
-    }
-    cout << endl;
+    // cout << "OUTPUT ===================" << endl;
+    // for (int i = 0; i < outHeight; i++) {
+    //     for (int j = 0; j < outWidth; j++) {
+    //         cout << output[i][j] << ",";
+    //     }
+    // }
+    // cout << endl;
 
     // 结束计时
     gettimeofday(&tend, NULL);

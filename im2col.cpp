@@ -3,6 +3,8 @@
 #include <iostream>
 #include <algorithm>
 #include <sys/time.h>
+#include <fstream>
+#include <string>
 
 extern "C" {
     #include <cblas.h>
@@ -41,13 +43,13 @@ void im2col_cpu(float** src,
                 }
             }
         }
-        cout << "IM2COL ===================" << endl;
-        for (int i = 0; i < kH*kW; i++) {
-            for (int j = 0; j < outH*outW; j++) {
-                cout << dest[i*outH*outW+j] << ",";
-            }
-            cout << endl;
-        }
+        // cout << "IM2COL ===================" << endl;
+        // for (int i = 0; i < kH*kW; i++) {
+        //     for (int j = 0; j < outH*outW; j++) {
+        //         cout << dest[i*outH*outW+j] << ",";
+        //     }
+        //     cout << endl;
+        // }
     } else {
         // row raster
         for (int p = 0; p < outH; ++p) {
@@ -70,21 +72,32 @@ void im2col_cpu(float** src,
                 }
             }
         }
-        cout << "IM2COL ===================" << endl;
-        for (int i = 0; i < outH*outW; i++) {
-            for (int j = 0; j < kH*kW; j++) {
-                cout << dest[i*kH*kW+j] << ",";
-            }
-            cout << endl;
-        }
+        // cout << "IM2COL ===================" << endl;
+        // for (int i = 0; i < outH*outW; i++) {
+        //     for (int j = 0; j < kH*kW; j++) {
+        //         cout << dest[i*kH*kW+j] << ",";
+        //     }
+        //     cout << endl;
+        // }
     }
 }
 
-const int kernel_num = 1;
-const int kernel_h = 5;
-const int kernel_w = 5;
-const int inHeight = 10;
-const int inWidth = 10;
+const int kernel_num = 64;
+const int kernel_h = 7;
+const int kernel_w = 7;
+const int inHeight = 224;
+const int inWidth = 224;
+
+void printMemoryUsage() {
+    std::ifstream procFile("/proc/self/status");
+    std::string line;
+    while (std::getline(procFile, line)) {
+        if (line.find("VmRSS:") == 0) {  // 查找 VmRSS 行
+            std::cout << line << std::endl;
+            break;
+        }
+    }
+}
 
 int main(){
     // construction input matrix
@@ -95,13 +108,13 @@ int main(){
             src[i][j] = (i * inWidth + j) * 0.1;
         }
     }
-    cout << "SOURCE ===================" << endl;
-    for (int i = 0; i < inHeight; i++) {
-        for (int j = 0; j < inWidth; j++) {
-            cout << src[i][j] << ",";
-        }
-        cout << endl;
-    }
+    // cout << "SOURCE ===================" << endl;
+    // for (int i = 0; i < inHeight; i++) {
+    //     for (int j = 0; j < inWidth; j++) {
+    //         cout << src[i][j] << ",";
+    //     }
+    //     cout << endl;
+    // }
 
     // construct weight matrix
     float **kernel[kernel_num];
@@ -129,27 +142,29 @@ int main(){
             }
         }
     }
+    cout << "kernel size = " << float(kernel_num*kernel_h*kernel_w * 4) / 1000000 << "MB" << endl;
     // 对输入矩阵Im2col
     int outHeight = inHeight - kernel_h + 1;
     int outWidth = inWidth - kernel_w + 1;
     float *srcIm2col = new float[kernel_w * kernel_h * outWidth * outHeight];
+    cout << "im2col size = " << float(kernel_w * kernel_h * outWidth * outHeight * 4) / 1000000 << "MB" << endl;
     im2col_cpu(src, inHeight, inWidth, kernel_h, kernel_w, srcIm2col);
 
     // 使用Blas库实现矩阵乘法
     float *output = new float[kernel_num * outHeight * outWidth];
-    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,kernel_num,
-        outHeight*outWidth, kernel_w*kernel_h, 1,
-        kernel2col, kernel_h*kernel_w,
-        srcIm2col,outHeight * outWidth, 0, output, outHeight * outWidth);
+    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+    kernel_num, outHeight*outWidth, kernel_w*kernel_h, 
+    1, kernel2col, kernel_h*kernel_w, srcIm2col,outHeight * outWidth, 0,
+    output, outHeight * outWidth);
+    printMemoryUsage();
 
-    cout << "OUTPUT ===================" << endl;
-    for (int i = 0; i < outHeight * outWidth; i++) {
-        for (int j = 0; j < kernel_num; j++) {
-            cout << output[i*kernel_num+j] << ",";
-        }
-    }
-    cout << endl;
-    
+    // cout << "OUTPUT ===================" << endl;
+    // for (int i = 0; i < outHeight; i++) {
+    //     for (int j = 0; j < outWidth; j++) {
+    //         cout << output[i*outWidth+j] << ",";
+    //     }
+    // }
+    // cout << endl;    
 
     // 结束计时
     gettimeofday(&tend, NULL);
@@ -170,6 +185,7 @@ int main(){
     for(int i = 0; i < inHeight; i++){
         delete [] src[i];
     }
+
 
     return 0;
 }
